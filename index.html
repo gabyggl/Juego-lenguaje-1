@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Dibujo de Animales</title>
+    <!-- Tailwind CSS para estilos de utilidad -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font Fredoka One para un estilo de texto amigable -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        /* Estilos personalizados para el cuerpo del documento */
+        body {
+            font-family: 'Fredoka One', cursive; /* Fuente principal del juego */
+            background-color: #FFFBEB; /* Color de fondo claro */
+        }
+        /* Transiciones para botones de animales y cajas de color para efectos hover */
+        .animal-btn, .color-box {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        /* Efecto hover para los botones de animales */
+        .animal-btn:hover {
+            transform: scale(1.05); /* Ligeramente más grande */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Sombra para profundidad */
+        }
+        /* Efecto hover para las cajas de color */
+        .color-box:hover {
+            transform: scale(1.1); /* Ligeramente más grande */
+        }
+        /* Estilo para el color seleccionado en la paleta */
+        .selected-color {
+            border: 4px solid #FBBF24; /* Borde amarillo para indicar selección */
+            transform: scale(1.1); /* Ligeramente más grande */
+        }
+        /* Estilo del cursor cuando se dibuja en el canvas */
+        #drawingCanvas {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="%23000000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'), auto;
+        }
+        /* Estilo para secciones deshabilitadas (ej. sección de colorear antes de adivinar el sonido) */
+        .disabled-section {
+            opacity: 0.5; /* Opacidad reducida */
+            pointer-events: none; /* Deshabilita interacciones del ratón */
+        }
+        /* Animación para la entrada del modal */
+        .modal-content-enter {
+            animation: scaleIn 0.3s ease-out forwards;
+        }
+        /* Animación para la salida del modal */
+        .modal-content-exit {
+            animation: scaleOut 0.3s ease-in forwards;
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes scaleOut {
+            from { transform: scale(1); opacity: 1; }
+            to { transform: scale(0.95); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-yellow-50 text-gray-800 flex items-center justify-center min-h-screen">
+
+    <div class="container mx-auto p-4 max-w-4xl text-center">
+        
+        <!-- Título principal del juego -->
+        <h1 class="text-4xl md:text-5xl text-amber-600 mb-4">¡A Jugar y Colorear!</h1>
+        <!-- Subtítulo descriptivo -->
+        <p class="text-lg text-gray-600 mb-6">Un juego para aprender los sonidos de los animales.</p>
+
+        <!-- Sección de Puntuación -->
+        <div class="bg-white rounded-xl shadow-lg p-4 mb-6 sticky top-4 z-10">
+            <h2 class="text-2xl font-bold text-amber-500">Puntuación: <span id="score">0</span></h2>
+        </div>
+
+        <!-- Sección 1: Adivina el Sonido -->
+        <div id="sound-game" class="bg-white rounded-2xl shadow-xl p-6 mb-8">
+            <h2 class="text-3xl text-emerald-500 mb-4">1. Adivina el Sonido</h2>
+            <p id="instruction" class="text-gray-600 mb-6 text-xl">Haz clic en el botón para escuchar y adivina qué animal es.</p>
+            <!-- Botón para reproducir el sonido del animal -->
+            <button id="playSoundBtn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-6 rounded-full text-xl mb-6 shadow-lg transition-transform transform hover:scale-105">
+                <!-- Icono de reproducción (SVG) -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 inline-block mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                </svg>
+                Escuchar Sonido
+            </button>
+
+            <!-- Contenedor para las opciones de animales (botones) -->
+            <div id="animal-choices" class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                <!-- Los botones de animales se insertarán aquí dinámicamente con JavaScript -->
+            </div>
+        </div>
+
+        <!-- Sección 2: A Colorear -->
+        <!-- Inicialmente deshabilitada hasta que se adivine el animal -->
+        <div id="coloring-section" class="bg-white rounded-2xl shadow-xl p-6 disabled-section">
+            <h2 class="text-3xl text-sky-500 mb-4">2. ¡Ahora a Colorear!</h2>
+            <p class="text-gray-600 mb-4 text-xl">Elige un color y colorea tu animal favorito.</p>
+            
+            <!-- Paleta de colores -->
+            <div id="color-palette" class="flex justify-center gap-3 mb-4 flex-wrap">
+                <!-- Los colores se insertarán aquí dinámicamente con JavaScript -->
+            </div>
+            
+            <!-- Contenedor del Canvas de Dibujo -->
+            <div class="relative w-full max-w-lg mx-auto bg-gray-200 rounded-lg overflow-hidden shadow-inner">
+                <canvas id="drawingCanvas" class="w-full h-auto"></canvas>
+            </div>
+            
+            <!-- Botones de acción para el canvas -->
+            <div class="mt-6 flex justify-center gap-4">
+                <button id="resetCanvasBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-5 rounded-full shadow-md transition-transform transform hover:scale-105">Limpiar</button>
+                <button id="nextChallengeBtn" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-5 rounded-full shadow-md transition-transform transform hover:scale-105">Siguiente Reto</button>
+            </div>
+        </div>
+        
+        <!-- Modal de Feedback (mensajes de éxito/error) -->
+        <!-- Inicialmente oculto -->
+        <div id="feedback-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div id="modal-content" class="bg-white rounded-2xl p-8 text-center shadow-2xl transform transition-all scale-95">
+                <p id="feedback-text" class="text-4xl font-bold mb-4"></p>
+                <div id="feedback-emoji" class="text-8xl mb-6"></div>
+                <button id="close-modal-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full text-lg">OK</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Array de objetos de animales con nombre, sonido, imagen de icono y imagen para colorear
+        const animals = [
+            // Las imágenes para colorear ahora usan placehold.co para asegurar que siempre carguen.
+            // Considera reemplazar estas con imágenes de contorno reales de una fuente confiable y persistente si es posible.
+            { name: 'Vaca', sound: 'muuu', image: 'https://img.icons8.com/plasticine/100/000000/cow.png', coloringImage: 'https://placehold.co/400x300/e0e0e0/000000?text=Vaca%20(Outline)' },
+            { name: 'Gallo', sound: 'kikiriki', image: 'https://img.icons8.com/plasticine/100/000000/rooster.png', coloringImage: 'https://placehold.co/400x300/e0e0e0/000000?text=Gallo%20(Outline)' },
+            { name: 'Gato', sound: 'miau', image: 'https://img.icons8.com/plasticine/100/000000/cat.png', coloringImage: 'https://placehold.co/400x300/e0e0e0/000000?text=Gato%20(Outline)' },
+            { name: 'Oveja', sound: 'beee', image: 'https://img.icons8.com/plasticine/100/000000/sheep.png', coloringImage: 'https://placehold.co/400x300/e0e0e0/000000?text=Oveja%20(Outline)' },
+            { name: 'Cerdo', sound: 'oinc', image: 'https://img.icons8.com/plasticine/100/000000/pig.png', coloringImage: 'https://placehold.co/400x300/e0e0e0/000000?text=Cerdo%20(Outline)' },
+            { name: 'Caballo', sound: 'relincho', image: 'https://img.icons8.com/plasticine/100/000000/horse.png', coloringImage: 'https://placehold.co/400x300/e0e0e0/000000?text=Caballo%20(Outline)' },
+        ];
+
+        // Colores disponibles para la paleta de dibujo
+        const colors = ['#FF0000', '#0000FF', '#FFFF00', '#008000', '#FFA500', '#800080', '#A52A2A', '#000000', '#FFFFFF'];
+
+        // Variables de estado del juego
+        let score = 0; // Puntuación inicial
+        let currentAnimal = null; // El animal actual a adivinar/colorear
+        let synth = window.speechSynthesis; // Objeto para síntesis de voz (para los sonidos de animales)
+        let isDrawing = false; // Bandera para indicar si se está dibujando en el canvas
+        let currentColor = '#000000'; // Color de dibujo actual, por defecto negro
+        let challengeCompleted = false; // Bandera para saber si el reto actual ha sido completado
+
+        // Obtener referencias a elementos del DOM
+        const scoreEl = document.getElementById('score');
+        const playSoundBtn = document.getElementById('playSoundBtn');
+        const animalChoicesEl = document.getElementById('animal-choices');
+        const coloringSection = document.getElementById('coloring-section');
+        const colorPalette = document.getElementById('color-palette');
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d'); // Contexto 2D del canvas para dibujar
+        const resetCanvasBtn = document.getElementById('resetCanvasBtn');
+        const nextChallengeBtn = document.getElementById('nextChallengeBtn');
+        const instructionEl = document.getElementById('instruction');
+        const modal = document.getElementById('feedback-modal');
+        const modalContent = document.getElementById('modal-content'); // Referencia al contenido del modal
+        const modalText = document.getElementById('feedback-text');
+        const modalEmoji = document.getElementById('feedback-emoji');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+
+        /**
+         * Inicializa el juego al cargar la página.
+         * Configura un nuevo desafío, la paleta de colores y los eventos del canvas.
+         */
+        function init() {
+            setupNewChallenge(); // Inicia el primer desafío
+            setupColorPalette(); // Configura los botones de colores
+            setupCanvas(); // Configura los eventos de dibujo en el canvas
+
+            // Añadir event listeners a los botones principales
+            playSoundBtn.addEventListener('click', playCurrentAnimalSound); // Reproducir sonido
+            resetCanvasBtn.addEventListener('click', clearCanvas); // Limpiar canvas
+            nextChallengeBtn.addEventListener('click', () => { // Botón Siguiente Reto
+                if (challengeCompleted) {
+                    setupNewChallenge(); // Si el reto está completo, inicia uno nuevo
+                } else {
+                    // Si no está completo, muestra un mensaje
+                    showModal('¡Aún no has terminado!', '🤔', 'Termina el reto para continuar.');
+                }
+            });
+            closeModalBtn.addEventListener('click', hideModal); // Ocultar el modal de feedback
+        }
+
+        /**
+         * Configura un nuevo desafío del juego.
+         * Selecciona un animal aleatorio, genera opciones de respuesta y carga la imagen para colorear.
+         */
+        function setupNewChallenge() {
+            challengeCompleted = false; // Reinicia el estado de completado del reto
+            coloringSection.classList.add('disabled-section'); // Deshabilita la sección de colorear
+            clearCanvas(); // Limpia el canvas
+
+            // Seleccionar un animal aleatorio de la lista
+            currentAnimal = animals[Math.floor(Math.random() * animals.length)];
+            instructionEl.textContent = 'Escucha el sonido y adivina qué animal es.'; // Actualiza la instrucción
+            
+            // Mezclar los animales para las opciones de respuesta (siempre incluyendo el animal correcto)
+            let choices = [...animals].sort(() => 0.5 - Math.random()).slice(0, 3); // Selecciona 3 animales aleatorios
+            if (!choices.includes(currentAnimal)) {
+                // Asegura que el animal correcto esté entre las opciones
+                choices[Math.floor(Math.random() * 3)] = currentAnimal;
+            }
+
+            // Vaciar y poblar las opciones de animales en el DOM
+            animalChoicesEl.innerHTML = '';
+            choices.forEach(animal => {
+                const button = document.createElement('button');
+                button.className = 'animal-btn bg-white p-4 rounded-lg shadow-md flex flex-col items-center justify-center';
+                button.innerHTML = `
+                    <img src="${animal.image}" alt="${animal.name}" class="w-24 h-24 object-contain" onerror="this.onerror=null;this.src='https://placehold.co/100x100/FFFBEB/amber-600?text=Animal';">
+                    <span class="mt-2 text-xl font-bold text-gray-700">${animal.name}</span>
+                `;
+                button.onclick = () => checkAnswer(animal); // Asigna la función de verificación al hacer clic
+                animalChoicesEl.appendChild(button);
+            });
+            
+            // Cargar la imagen para colorear en el canvas
+            const coloringImage = new Image();
+            coloringImage.crossOrigin = "Anonymous"; // Permite cargar imágenes de dominios diferentes
+            coloringImage.src = currentAnimal.coloringImage;
+            coloringImage.onerror = () => {
+                // Si la imagen falla en cargar, dibuja un placeholder
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.width * 0.75; // Proporción estándar
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#a0a0a0';
+                ctx.textAlign = 'center';
+                // El tamaño de fuente es crítico para que el texto se vea bien.
+                // Aquí se ajusta dinámicamente al tamaño del canvas.
+                ctx.font = ${canvas.height / 10}px 'Fredoka One', cursive; // Ajusta el tamaño de la fuente
+                ctx.fillText('No se pudo cargar la imagen', canvas.width / 2, canvas.height / 2);
+            };
+            coloringImage.onload = () => {
+                // Ajusta el tamaño del canvas a la imagen cargada, manteniendo la proporción
+                const aspectRatio = coloringImage.height / coloringImage.width;
+                const canvasWidth = canvas.parentElement.clientWidth;
+                canvas.width = canvasWidth;
+                canvas.height = canvasWidth * aspectRatio;
+                ctx.drawImage(coloringImage, 0, 0, canvas.width, canvas.height); // Dibuja la imagen
+            };
+        }
+        
+        /**
+         * Reproduce el sonido del animal actual usando la API SpeechSynthesis.
+         */
+        function playCurrentAnimalSound() {
+            if (synth.speaking) {
+                synth.cancel(); // Cancela cualquier habla en curso
+            }
+            if (currentAnimal && synth) {
+                const utterance = new SpeechSynthesisUtterance(currentAnimal.sound);
+                utterance.lang = 'es-ES'; // Idioma español
+                utterance.pitch = 1.2; // Tono ligeramente alto
+                utterance.rate = 0.8; // Velocidad de habla más lenta
+                synth.speak(utterance);
+            }
+        }
+
+        /**
+         * Verifica la respuesta del usuario al adivinar el animal.
+         * Actualiza la puntuación y habilita la sección de colorear si es correcto.
+         * @param {Object} selectedAnimal - El objeto animal seleccionado por el usuario.
+         */
+        function checkAnswer(selectedAnimal) {
+            if (selectedAnimal.name === currentAnimal.name) {
+                updateScore(10); // Suma puntos
+                showModal('¡Muy Bien!', '🎉', '¡Correcto! Ahora puedes colorear.'); // Muestra modal de éxito
+                coloringSection.classList.remove('disabled-section'); // Habilita la sección de colorear
+                challengeCompleted = true; // Marca el reto como completado
+                instructionEl.textContent = ¡Felicidades! Colorea el ${currentAnimal.name}.; // Actualiza la instrucción
+            } else {
+                updateScore(-2); // Resta puntos
+                showModal('Inténtalo de nuevo', '😢', 'Ese no es el sonido correcto.'); // Muestra modal de error
+                playCurrentAnimalSound(); // Repite el sonido para dar otra oportunidad
+            }
+        }
+
+        /**
+         * Actualiza la puntuación del juego.
+         * @param {number} points - Puntos a sumar o restar.
+         */
+        function updateScore(points) {
+            score += points;
+            if(score < 0) score = 0; // La puntuación no puede ser negativa
+            scoreEl.textContent = score; // Actualiza el texto de la puntuación
+        }
+
+        /**
+         * Configura la paleta de colores en el DOM.
+         * Crea un div para cada color y le asigna un evento de clic.
+         */
+        function setupColorPalette() {
+            colorPalette.innerHTML = ''; // Limpia la paleta existente
+            colors.forEach(color => {
+                const colorDiv = document.createElement('div');
+                colorDiv.className = 'color-box w-10 h-10 rounded-full cursor-pointer shadow-md border-2 border-white';
+                colorDiv.style.backgroundColor = color;
+                colorDiv.addEventListener('click', () => {
+                    currentColor = color; // Establece el color de dibujo actual
+                    // Elimina la clase 'selected-color' de todos los colores
+                    document.querySelectorAll('.color-box').forEach(c => c.classList.remove('selected-color'));
+                    colorDiv.classList.add('selected-color'); // Agrega la clase al color seleccionado
+                    // Actualiza el cursor del canvas con el color seleccionado
+                    canvas.style.cursor = url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="${color.replace('#', '%23')}"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>'), auto;
+                });
+                colorPalette.appendChild(colorDiv);
+            });
+            // Seleccionar el primer color por defecto al cargar
+            if (colorPalette.firstChild) {
+              colorPalette.firstChild.classList.add('selected-color');
+              currentColor = colors[0];
+            }
+        }
+
+        /**
+         * Configura los event listeners para el dibujo en el canvas (ratón y eventos táctiles).
+         */
+        function setupCanvas() {
+            // Eventos del ratón
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseleave', stopDrawing); // Detener dibujo si el ratón sale del canvas
+            
+            // Eventos táctiles para dispositivos móviles
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(getTouchPos(e)); }, { passive: false });
+            canvas.addEventListener('touchend', (e) => { e.preventDefault(); stopDrawing(); }, { passive: false });
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(getTouchPos(e)); }, { passive: false });
+
+            // Ajusta el tamaño del canvas al redimensionar la ventana
+            window.addEventListener('resize', () => {
+                if (currentAnimal) { // Asegura que haya un animal cargado
+                    const coloringImage = new Image();
+                    coloringImage.crossOrigin = "Anonymous";
+                    coloringImage.src = currentAnimal.coloringImage;
+                    coloringImage.onload = () => {
+                        const aspectRatio = coloringImage.height / coloringImage.width;
+                        const canvasWidth = canvas.parentElement.clientWidth;
+                        canvas.width = canvasWidth;
+                        canvas.height = canvasWidth * aspectRatio;
+                        ctx.drawImage(coloringImage, 0, 0, canvas.width, canvas.height);
+                    };
+                    coloringImage.onerror = () => {
+                        // Manejar el error de carga de imagen si ocurre al redimensionar
+                        canvas.width = canvas.parentElement.clientWidth;
+                        canvas.height = canvas.width * 0.75;
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = '#f0f0f0';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = '#a0a0a0';
+                        ctx.textAlign = 'center';
+                        ctx.font = ${canvas.height / 10}px 'Fredoka One', cursive;
+                        ctx.fillText('No se pudo cargar la imagen', canvas.width / 2, canvas.height / 2);
+                    };
+                }
+            });
+        }
+
+        /**
+         * Obtiene la posición táctil relativa al canvas.
+         * @param {TouchEvent} touchEvent - El evento táctil.
+         * @returns {Object} - Objeto con las coordenadas offsetX y offsetY.
+         */
+        function getTouchPos(touchEvent) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                offsetX: touchEvent.touches[0].clientX - rect.left,
+                offsetY: touchEvent.touches[0].clientY - rect.top
+            };
+        }
+
+        /**
+         * Inicia el modo de dibujo cuando el ratón o el dedo se presionan sobre el canvas.
+         * @param {MouseEvent|Object} e - El evento del ratón o un objeto de posición táctil.
+         */
+        function startDrawing(e) {
+            if (coloringSection.classList.contains('disabled-section')) return; // No dibujar si la sección está deshabilitada
+            isDrawing = true;
+            // Ajustar para el escalado del canvas, asegurando que las coordenadas de dibujo sean correctas
+            const scaleX = canvas.width / canvas.getBoundingClientRect().width;
+            const scaleY = canvas.height / canvas.getBoundingClientRect().height;
+            const canvasX = e.offsetX * scaleX;
+            const canvasY = e.offsetY * scaleY;
+            ctx.beginPath(); // Inicia un nuevo camino para la línea
+            ctx.moveTo(canvasX, canvasY); // Mueve el punto de inicio
+            draw( { offsetX: canvasX, offsetY: canvasY } ); // Dibuja un punto inicial
+        }
+
+        /**
+         * Detiene el modo de dibujo cuando el ratón o el dedo se sueltan o salen del canvas.
+         */
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath(); // Resetea el camino para futuras líneas
+        }
+
+        /**
+         * Dibuja en el canvas mientras el ratón o el dedo se mueven y el modo de dibujo está activo.
+         * @param {MouseEvent|Object} e - El evento del ratón o un objeto de posición táctil.
+         */
+        function draw(e) {
+            if (!isDrawing) return; // No dibujar si no se está en modo de dibujo
+            
+            // Ajustar para el escalado del canvas
+            const scaleX = canvas.width / canvas.getBoundingClientRect().width;
+            const scaleY = canvas.height / canvas.getBoundingClientRect().height;
+            const canvasX = e.offsetX * scaleX;
+            const canvasY = e.offsetY * scaleY;
+
+            ctx.lineWidth = 10; // Grosor de la línea
+            ctx.lineCap = 'round'; // Capas redondeadas para las líneas
+            ctx.strokeStyle = currentColor; // Color de la línea
+
+            ctx.lineTo(canvasX, canvasY); // Dibuja una línea hasta la posición actual
+            ctx.stroke(); // Aplica el trazo
+            ctx.beginPath(); // Inicia un nuevo camino
+            ctx.moveTo(canvasX, canvasY); // Mueve el punto de inicio para la siguiente línea
+        }
+
+        /**
+         * Limpia el canvas y vuelve a dibujar la imagen del animal para colorear.
+         */
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpia todo el canvas
+            // Volver a dibujar la imagen de fondo si hay un animal seleccionado
+            if (currentAnimal) {
+                const coloringImage = new Image();
+                coloringImage.crossOrigin = "Anonymous";
+                coloringImage.src = currentAnimal.coloringImage;
+                coloringImage.onload = () => {
+                    ctx.drawImage(coloringImage, 0, 0, canvas.width, canvas.height);
+                };
+                 coloringImage.onerror = () => {
+                    // Si la imagen falla en cargar, dibuja un placeholder
+                    canvas.width = canvas.parentElement.clientWidth;
+                    canvas.height = canvas.width * 0.75;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#f0f0f0';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#a0a0a0';
+                    ctx.textAlign = 'center';
+                    ctx.font = ${canvas.height / 10}px 'Fredoka One', cursive;
+                    ctx.fillText('No se pudo cargar la imagen', canvas.width / 2, canvas.height / 2);
+                };
+            }
+        }
+
+        /**
+         * Muestra un modal de feedback al usuario.
+         * @param {string} text - El texto principal del mensaje.
+         * @param {string} emoji - Un emoji grande para el mensaje.
+         * @param {string} subtext - Texto secundario (opcional).
+         */
+        function showModal(text, emoji, subtext = '') {
+            modalText.textContent = text;
+            modalEmoji.textContent = emoji;
+            // Aquí puedes agregar el subtext si lo necesitas en el modal
+            modal.classList.remove('hidden'); // Muestra el modal
+            modalContent.classList.remove('modal-content-exit'); // Asegura que no haya animación de salida previa
+            modalContent.classList.add('modal-content-enter'); // Aplica animación de entrada
+        }
+
+        /**
+         * Oculta el modal de feedback.
+         */
+        function hideModal() {
+            modalContent.classList.remove('modal-content-enter'); // Elimina animación de entrada
+            modalContent.classList.add('modal-content-exit'); // Aplica animación de salida
+            modalContent.addEventListener('animationend', () => {
+                modal.classList.add('hidden'); // Oculta el modal después de la animación
+                modalContent.classList.remove('modal-content-exit'); // Limpia la clase de animación
+            }, { once: true }); // Solo ejecuta el listener una vez
+        }
+
+        // Se asegura de que el DOM esté completamente cargado antes de inicializar el juego
+        window.onload = init;
+    </script>
+</body>
+</html>
